@@ -1,0 +1,21 @@
+annotation_approver,id,label,text,user
+,833,15,0:protein 1:rna 2:infect 3:express 4:structur 5:gene,2
+,833,12,0:protein 1:rna 2:infect 3:express 4:structur 5:gene,6
+,833,11,0:protein 1:rna 2:infect 3:express 4:structur 5:gene,5
+,833,11,0:protein 1:rna 2:infect 3:express 4:structur 5:gene,3
+,834,11,0:infect 1:influenza 2:china 3:outbreak 4:emerg 5:studi,2
+,834,16,0:infect 1:influenza 2:china 3:outbreak 4:emerg 5:studi,6
+,834,11,0:infect 1:influenza 2:china 3:outbreak 4:emerg 5:studi,5
+,834,11,0:infect 1:influenza 2:china 3:outbreak 4:emerg 5:studi,3
+,835,10,0:respiratori 1:gene 2:acut 3:infect 4:patien 5:syndrom,2
+,835,12,0:respiratori 1:gene 2:acut 3:infect 4:patien 5:syndrom,6
+,835,10,0:respiratori 1:gene 2:acut 3:infect 4:patien 5:syndrom,5
+,835,9,0:respiratori 1:gene 2:acut 3:infect 4:patien 5:syndrom,3
+,836,11,0:rna 1:protect 2:human 3:cell 4:respons 5:avian,2
+,836,12,0:rna 1:protect 2:human 3:cell 4:respons 5:avian,6
+,836,16,0:rna 1:protect 2:human 3:cell 4:respons 5:avian,5
+,836,9,0:rna 1:protect 2:human 3:cell 4:respons 5:avian,3
+,837,10,0:infecti 1:chapter 2:model 3:analysi 4:infect 5:vaccin,2
+,837,10,0:infecti 1:chapter 2:model 3:analysi 4:infect 5:vaccin,6
+,837,10,0:infecti 1:chapter 2:model 3:analysi 4:infect 5:vaccin,5
+,837,10,0:infecti 1:chapter 2:model 3:analysi 4:infect 5:vaccin,3
