@@ -1,0 +1,257 @@
+---
+title: "Topic Modelling with COVID-19 Articles"
+subtitle: "Homework 4"
+author: "Blarry Wang, Ihsan Kahveci, Megan Erickson, Morgan Wack, Nicholas Wittstock"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r}
+library(quanteda)
+library(tidyverse)
+library(topicmodels)
+library(stm)
+```
+
+# Text Preparation
+
+## Importing the data
+
+```{r, cache=TRUE}
+setwd("~/Desktop/POLS559/hw4")
+data  <- read.csv("./COVIDarticletitles.csv", 
+                  na.strings = "", stringsAsFactors = FALSE)
+```
+
+```{r, attr.output='style="max-height: 100px;"'}
+data %>% str()
+```
+
+There are many authors for each text and they don't seem that they are overlapping. So, we don't think they are not useful as metadata.
+
+```{r}
+data_sub <- data %>% select(title, journal)
+data_sub %>% glimpse()
+```
+
+## Creating the corpus
+
+```{r, attr.output='style="max-height: 200px;"'}
+corpus <- corpus(data_sub, text_field = "title")
+corpus %>% summary()
+```
+
+```{r}
+texts(corpus)[1:5]
+```
+
+# Document Frequency Matrices
+
+we created customized stopwords
+```{r}
+stops = c(stopwords("english"), "coronavirus", "covid-19", "virus", "diseas")
+```
+
+creating a quanteda dfm object from corpus:
+
+```{r}
+quantdfm <- corpus %>% 
+  dfm(remove_punct = TRUE, remove_numbers = TRUE, stem = TRUE) %>% 
+  dfm(remove=stops) #it is important to remove stopwords after stemming 
+```
+
+Removing the extreme terms from the matrix:
+
+```{r}
+quantdfm <- dfm_trim(quantdfm, min_termfreq = 0.00001, termfreq_type = "prop",
+         max_docfreq = 0.2, docfreq_type = "prop", verbose = TRUE)
+```
+
+Removes empty cases:
+
+```{r}
+empty_docs <- which((ntoken(quantdfm) > 0) == F) #indices of omitted docs
+quantdfm <- dfm_subset(quantdfm, ntoken(quantdfm) > 0)
+```
+
+# Model Fit: LDA
+
+LDA model with 10 topics
+
+```{r cache=TRUE}
+model_LDA <- LDA(convert(quantdfm, to = "topicmodels"), k = 10,
+             control=list(seed=57)) 
+get_terms(model_LDA, 10)
+```
+
+Running another model without custom stopwords and compare it to original model:
+
+```{r}
+quantdfm2 <- corpus %>% 
+  dfm(remove_punct = TRUE, remove_numbers = TRUE, stem = TRUE,
+      remove = stopwords("english"))
+
+quantdfm2 <- dfm_trim(quantdfm2, min_termfreq = 0.00001, termfreq_type = "prop",
+         max_docfreq = 0.2, docfreq_type = "prop", verbose = TRUE)
+
+quantdfm2 <- dfm_subset(quantdfm2, ntoken(quantdfm2) > 0)
+```
+
+```{r cache=TRUE}
+model_LDA2 <- LDA(convert(quantdfm2, to = "topicmodels"), k = 10,
+             control=list(seed=57)) 
+get_terms(model_LDA2, 10)
+```
+
+```{r}
+data.frame(perplexity(model_LDA), perplexity(model_LDA2))
+```
+
+Using customized keywords improved our perplexity by `r perplexity(model_LDA) - perplexity(model_LDA2)`
+
+However, using LDA does not generate distinc topics. The words respitory, infect and coronavirus dominated many topics. We tried STM package for better results. 
+
+# Model Improvement: STM 
+
+converting quenteada matrix to STM matrix:
+
+```{r}
+out <- convert(quantdfm, to = 'stm')
+```
+
+
+
+## STM with 50 topics:
+```{r}
+docs = read.csv("docs.csv", header = F, stringsAsFactors = F)
+docs = str_replace_all(docs, fixed(" "), "")
+
+docs %>% head()
+```
+
+**Warning: This takes too much time.**
+
+```{r, stm 50, cache=TRUE, include=FALSE}
+model50 <- stm(documents = out$documents,
+             vocab = out$vocab,
+             data = out$meta,
+             init.type = "LDA",
+             max.em.its = 10,
+             K = 50, verbose = TRUE,
+             ngroups = 4, #parelel processing 
+             seed = 57)
+```
+
+LDAvis is an interactive visualazation tool with built-in PC analysis:
+
+```{r eval=FALSE, include=FALSE}
+library(servr)
+library(gistr)
+toLDAvis(model50, docs = out$documents, open.browser = TRUE,
+         out.dir = paste0(getwd(), "/model50"),
+         as.gist = TRUE) #creates a gistr object, requires github authorization
+```
+
+Link to 50 topic visual:
+https://bl.ocks.org/ihsankahveci/raw/7a047c9b36479af412410682a7fcf02f/
+
+**Note**: LDAvis may renumber the topics.
+
+We have look at the results in various iteration points and in all of them there arre 3 major clusters that are very distinct from each other. To understand better, we run another model with 3 topics.
+
+
+## STM with 3 topics:
+
+```{r, stm3, cache=TRUE}
+model3 <- stm(documents = out$documents,
+             vocab = out$vocab,
+             data = out$meta,
+             init.type = "LDA",
+             max.em.its = 10,
+             K = 3, verbose = FALSE,
+             ngroups = 2,
+             seed = 57)
+```
+
+
+```{r}
+plot.STM(model3, type = "summary")
+```
+
+```{r eval=FALSE, include=FALSE}
+toLDAvis(model3, docs = out$documents, open.browser = TRUE,
+         out.dir = paste0(getwd(), "/model3"),
+         as.gist = TRUE) #creates a gistr object, requires github authorization
+```
+
+Link to 3 topic visual:
+https://bl.ocks.org/ihsankahveci/raw/f5935b30892a9217f03e6d0ea8e17d5c/
+
+**Note**: LDAvis may renumber the topics.
+
+Though many of our essential topics appeared at this low level of topics, we decided too much was excluded for us to be able to utilize so few k. We decided to try with 10 topics and compare it to our initial LDA model.
+
+
+## STM with 10 topics: 
+
+```{r, stm10, cache=TRUE}
+model10 <- stm(documents = out$documents,
+             vocab = out$vocab,
+             data = out$meta,
+             init.type = "LDA",
+             max.em.its = 20,
+             K = 10, verbose = F,
+             ngroups = 2, #parelel processing 
+             seed = 57)
+```
+
+```{r}
+plot.STM(model10, type = "summary")
+```
+
+
+```{r eval=FALSE, include=FALSE}
+toLDAvis(model10, docs = out$documents, open.browser = TRUE,
+         out.dir = paste0(getwd(), "/model10"),
+         as.gist = TRUE) #creates a gistr object, requires github authorization
+```
+
+Link to 10 topic visual:
+https://bl.ocks.org/ihsankahveci/raw/918ac892b5833cb71cd0dec500b1f956/
+
+**Note**: LDAvis may renumber the topics.
+
+Finally, we have reached semantically meaningful 10 topics. Not all of them are very different from each other, the three major clusters are still there but there is an important variation captured too. 
+
+
+# Labeling the topics
+
+This visualization describes the prevalence of the topic within the entire corpus as well as the top three words associated with the topic. As in our earlier example, you may see that there are some topics that seem plausible, but many others that do not seem very coherent or meaningful. The `stm` package has another useful function called `findThoughts` which extracts passages from documents within the corpus that load high on topics specified by the user.
+
+
+```{r}
+corpus_sub = corpus[-empty_docs] #length must be equal to stm object
+```
+
+Getting the most representative documents for topics 1,10,3:
+
+```{r}
+thoughts1 <- findThoughts(model10, texts = texts(corpus_sub), topics=1, n=10)$docs[[1]]
+thoughts10 <- findThoughts(model10, texts = texts(corpus_sub), topics=10, n=10)$docs[[1]]
+thoughts3 <- findThoughts(model10, texts = texts(corpus_sub), topics=3, n=10)$docs[[1]]
+```
+
+Printing the sentences:
+
+```{r}
+par(mfrow = c(1, 3), mar=c(.5,.5,1,.5))
+plotQuote(thoughts1, width=40, text.cex = .8  ,main="Submicroscopic Structures")
+plotQuote(thoughts10, width=40, text.cex = .8, main="Drug")
+plotQuote(thoughts3, width=40, text.cex = .8, main="Infection")
+```
+
+As expected, we observed some noise in our classification but for each topic it is possible to find 5-6 relevant texts in the figure above.
