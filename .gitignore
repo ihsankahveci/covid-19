@@ -40,3 +40,4 @@ vignettes/*.pdf
 
 *.nc
 *.DS_store
+.Rproj.user
